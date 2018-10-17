@@ -1,4 +1,4 @@
-/**
+/*
 * Action Flow:
 * 1) employee submits form
 * 2) new row appears on Form Responses 1
@@ -8,9 +8,9 @@
 */
 
 
-/**
+/*
  * Trigger function for Google Forms "Form submit" event.
- * Simple, assumes all answers are provided, no error checking.
+ * no error checking.
  */
 
 // When Form Gets submitted
@@ -18,16 +18,11 @@ function OnFormSubmit(e){
   Logger.log("[METHOD] OnFormSubmit");
 
   reorderNotice(e);
-  //updateMaster(e);
+  updateMaster(e);
 }
 
 function reorderNotice(e) {
-  Logger.log('reorderNotice started');
-  //Add the trigger from the Resources menu in the Dev Editor
-  //DevEditor>Resources>Current Project's Triggers>Add trigger
-  // missingNotification -- From spreadsheet -- On edit
- 
-  //var lastrow = SpreadsheetApp.getActiveSheet().getLastRow();
+  Logger.log('reorderNotice start');
   
   var r = e.range; //event data
   var formResponses = r.getValues();
@@ -51,11 +46,8 @@ function reorderNotice(e) {
   var rev = s.getRange(r.getRow(), 3).getValue();
   var partTitle = s.getRange(r.getRow(), 11).getValue();
   var minOrderQty = s.getRange(r.getRow(), 10).getValue();
-  Logger.log('reorderNotice finished');
+  Logger.log('reorderNotice end');
   
-  //MailApp.sendEmail("conner.george@downholeinnovations.com",
-  //                "TPS reports",
-  //                "Where are the TPS reports?");
   sendEmail2(r, partTitle, partNum, rev, currentQty, minOnHand, minOrderQty, emailAddress, emailAddressCC); //send email with all data
   Logger.log('Email sent');
 }
@@ -63,65 +55,10 @@ function reorderNotice(e) {
 
 /**
  * Sends emails with data from the current spreadsheet.
- */
-function sendEmail1(range, partTitle, partNum, rev, currentQty, minOnHand, minOrderQty, emailAddress, emailAddressCC) {
-  Logger.log("sendEmail1 start");
-  //var formsubmission = range.getValues();
-  //var row = formsubmission[0]; //first row only
- 
-    //var emailAddress = "conner.george@downholeinnovations.com";
-    var emailSubject = "INVENTORY-AUTO-NOTICE: "+partNum+" Qty below Minimum";
-    var emailBody = "<p> \
-    <strong>Part Title: </strong><br /> \
-    "+partTitle+" \
-    </p><p> \
-    <strong>P/N:</strong><br /> \
-    "+partNum+" \
-    </p><p> \
-    <strong>Rev:</strong><br /> \
-    "+rev+" \
-    </p><p> \
-    <strong>Current Qty:</strong><br /> \
-    "+currentQty+" \
-    </p><p> \
-    <strong>Min On Hand:</strong><br /> \
-    "+minOnHand+" \
-    </p><p> \
-    <strong>Min Order Qty:</strong><br /> \
-    "+minOrderQty+" \
-    </p><p> \
-    Please submit an RFQ for additional qty as soon as possible. \
-    </p><p> \
-    Thank you :) \
-    </p><p> \
-    __________________________________________________ \
-    </p><p> \
-    Visit google to modify this notice: \
-    </p>";
-      
-    MailApp.sendEmail({
-      recipient: emailAddress,
-      cc: emailAddressCC,
-      subject: emailSubject,
-      htmlBody: emailBody
-    });
-    
-    Logger.log('sendEmail1 end');
-  }               
-  
-  
+ */  
 function sendEmail2(range, partTitle, partNum, rev, currentQty, minOnHand, minOrderQty, emailAddress, emailAddressCC) {
-   Logger.log("sendEmail2 start");
+   Logger.log("sendEmail start");
    var emailSubject = "INVENTORY NOTICE: "+partNum+" qty below min";
-/*   var emailMessage = 'partTitle:' + partTitle +
-                 ', partNum:' + partNum +
-                 ', rev:' + rev +
-                 ', currentQty:' + currentQty +
-                 ', minOnHand:' + minOnHand +
-                 ', minOrderQty:' + minOrderQty +
-                 ', emailAddress:' + emailAddress +
-                 ', emailAddressCC:' + emailAddressCC;
-*/
    var emailMessage = 
    '<body>' +
    '<p>' +
@@ -151,16 +88,10 @@ function sendEmail2(range, partTitle, partNum, rev, currentQty, minOnHand, minOr
     '__________________________________________________' + 
     '</p><p>' + 
     'Visit the google sheets DHI/AFS inventory spreadsheet > Tools > Script Editor to modify this notice<br />' +
-    'TO and CC email address for this notice can be changed from directly within the inventory spreadsheet, Form Responses tab' +
+    'TO and CC email addresses for this notice can be changed from directly within the inventory spreadsheet, in the Form Responses tab' +
     '</p>' +
     '</body>';
     
-    var emailMessageTest =  
-    '<body>' + 
-      '<h2> Test </h2><br />' +
-        '<p> Greetings Earthling </p>' +
-    '</body>' ;
-
    MailApp.sendEmail(emailAddress,
                   emailSubject, '', {
                   name: 'Auto Emailer',
@@ -168,23 +99,28 @@ function sendEmail2(range, partTitle, partNum, rev, currentQty, minOnHand, minOr
                   htmlBody: emailMessage
                   });
    
-/*    
-    MailApp.sendEmail("conner.george@downholeinnovations.com",
-                  "TPS reports",
-                  "Where are the TPS reports? 2");
-    
-    Logger.log('sendEmail2 end');
-*/
+   Logger.log('sendEmail end');
 }               
-  
-  
+ 
+ 
  function updateMaster(e) {
+   Logger.log("updateMaster start");
    var r = e.range; //event data
    var s = r.getSheet(); //Returns the sheet this range belongs to.
-   var ss = e.source; //event spreadsheet object
-   var sName = s.getSheetName(); //event spreadsheet name
-   var ts = r.getSheetByName('Master Inventory (Tablet)'); //destination Sheet tab name
+   var currentQty = s.getRange(r.getRow(), 7).getValue();
+   var PNRev = s.getRange(r.getRow(), 5).getValue();
    
+   var ts = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Master Inventory (Tablet)");  //target sheet tab name
+   var tRange = ts.getRange('K:K');
+   var tQty = tRange.getValues(); //target column values for the Qty update
+   var tID = ts.getRange('C:C').getValues();
    
-   s.getRange(r.getRow(), 7).copyTo(ts.getRange("K"), spreadsheetApp.CopyPasteType.PASTE_VALUES);
- }
+   for(var i = 0; i<tID.length;i++){
+    if(tID[i][0] == PNRev){
+      tQty[i][0] = currentQty;
+      break;
+    }
+   }
+   tRange.setValues(tQty);
+   Logger.log("updateMaster end");
+}
