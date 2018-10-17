@@ -1,0 +1,152 @@
+/**
+* Action Flow:
+* 1) employee submits form
+* 2) new row appears on Form Responses 1
+* 3) new row is auto-filled with all relevant info (pn, rev, total, min, order boolean, etc)
+* CODE: 4A) auto-send reorder notice email, if necessary
+* CODE: 4B) auto-update Master Inventory (tablet) sheet w/ new totals
+*/
+
+
+/**
+ * Trigger function for Google Forms "Form submit" event.
+ * Simple, assumes all answers are provided, no error checking.
+ */
+
+// When Form Gets submitted
+function OnFormSubmit(e){
+  Logger.log("[METHOD] OnFormSubmit");
+
+  reorderNotice(e);
+  //updateMaster(e);
+}
+
+function reorderNotice(e) {
+  Logger.log('reorderNotice started');
+  //Add the trigger from the Resources menu in the Dev Editor
+  //DevEditor>Resources>Current Project's Triggers>Add trigger
+  // missingNotification -- From spreadsheet -- On edit
+ 
+  //var lastrow = SpreadsheetApp.getActiveSheet().getLastRow();
+  
+  var r = e.range; //event data
+  var formResponses = r.getValues();
+  var row = formResponses[0]
+  var partnum = row[0];
+  var rev = row[1];
+  var qty = row[2];  
+  var s = r.getSheet(); //Returns the sheet this range belongs to.
+  var ss = e.source; //event spreadsheet object
+  var sName = s.getSheetName(); //event spreadsheet name
+  var emailAddress = s.getRange(2, 13).getValue();
+  var emailAddressCC = s.getRange(2, 14).getValue();
+  
+  if(sName != "Form Responses 1") return; //check if sheet is correct 
+  
+  var currentQty = s.getRange(r.getRow(), 7).getValue();
+  var minOnHand = s.getRange(r.getRow(), 8).getValue();
+  if(currentQty >= minOnHand) return; //check if current qty is less than the min on hand
+  
+  var partNum = s.getRange(r.getRow(), 2).getValue();
+  var rev = s.getRange(r.getRow(), 3).getValue();
+  var partTitle = s.getRange(r.getRow(), 11).getValue();
+  var minOrderQty = s.getRange(r.getRow(), 10).getValue();
+  Logger.log('reorderNotice finished');
+  
+  //MailApp.sendEmail("conner.george@downholeinnovations.com",
+  //                "TPS reports",
+  //                "Where are the TPS reports?");
+  sendEmail2(r, partTitle, partNum, rev, currentQty, minOnHand, minOrderQty, emailAddress, emailAddressCC); //send email with all data
+  Logger.log('Email sent');
+}
+
+
+/**
+ * Sends emails with data from the current spreadsheet.
+ */
+function sendEmail1(range, partTitle, partNum, rev, currentQty, minOnHand, minOrderQty, emailAddress, emailAddressCC) {
+  Logger.log("sendEmail1 start");
+  //var formsubmission = range.getValues();
+  //var row = formsubmission[0]; //first row only
+ 
+    //var emailAddress = "conner.george@downholeinnovations.com";
+    var emailSubject = "INVENTORY-AUTO-NOTICE: "+partNum+" Qty below Minimum";
+    var emailBody = "<p> \
+    <strong>Part Title: </strong><br /> \
+    "+partTitle+" \
+    </p><p> \
+    <strong>P/N:</strong><br /> \
+    "+partNum+" \
+    </p><p> \
+    <strong>Rev:</strong><br /> \
+    "+rev+" \
+    </p><p> \
+    <strong>Current Qty:</strong><br /> \
+    "+currentQty+" \
+    </p><p> \
+    <strong>Min On Hand:</strong><br /> \
+    "+minOnHand+" \
+    </p><p> \
+    <strong>Min Order Qty:</strong><br /> \
+    "+minOrderQty+" \
+    </p><p> \
+    Please submit an RFQ for additional qty as soon as possible. \
+    </p><p> \
+    Thank you :) \
+    </p><p> \
+    __________________________________________________ \
+    </p><p> \
+    Visit google to modify this notice: \
+    </p>";
+      
+    MailApp.sendEmail({
+      recipient: emailAddress,
+      cc: emailAddressCC,
+      subject: emailSubject,
+      htmlBody: emailBody
+    });
+    
+    Logger.log('sendEmail1 end');
+  }               
+  
+  
+function sendEmail2(range, partTitle, partNum, rev, currentQty, minOnHand, minOrderQty, emailAddress, emailAddressCC) {
+   Logger.log("sendEmail2 start");
+   var emailSubject = "INVENTORY NOTICE: "+partNum+" qty below min";
+   var emailMessage = 'partTitle:' + partTitle +
+                 ', partNum:' + partNum +
+                 ', rev:' + rev +
+                 ', currentQty:' + currentQty +
+                 ', minOnHand:' + minOnHand +
+                 ', minOrderQty:' + minOrderQty +
+                 ', emailAddress:' + emailAddress +
+                 ', emailAddressCC:' + emailAddressCC;
+   
+   MailApp.sendEmail(emailAddress,
+                  emailSubject,
+                  emailMessage, {
+                  name: 'Auto Emailer',
+                  cc: emailAddressCC
+                  });
+   
+
+/*    
+    MailApp.sendEmail("conner.george@downholeinnovations.com",
+                  "TPS reports",
+                  "Where are the TPS reports? 2");
+    
+    Logger.log('sendEmail2 end');
+*/
+}               
+  
+  
+ function updateMaster(e) {
+   var r = e.range; //event data
+   var s = r.getSheet(); //Returns the sheet this range belongs to.
+   var ss = e.source; //event spreadsheet object
+   var sName = s.getSheetName(); //event spreadsheet name
+   var ts = r.getSheetByName('Master Inventory (Tablet)'); //destination Sheet tab name
+   
+   
+   s.getRange(r.getRow(), 7).copyTo(ts.getRange("K"), spreadsheetApp.CopyPasteType.PASTE_VALUES);
+ }
